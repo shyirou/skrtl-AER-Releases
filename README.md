@@ -7,13 +7,13 @@
 ### Cara Penggunaan
 
 1. **Siapkan Project di After Effects**:
-   - Buka project (*.aep), masukkan komposisi ke `Render Queue`, atur pengaturan, lalu `save project`.
+   - Buka project *.aep, masukkan komposisi ke `Render Queue`, atur pengaturan, lalu `save project`.
 
 2. **Buka Aplikasi**:
    - Jalankan `AER.exe`, pilih versi After Effects.
 
 3. **Pilih File AEP**:
-   - Klik `Select AEP` dan pilih file proyek (*.aep).
+   - Klik `Select AEP` dan pilih file proyek *.aep.
 
 4. **Render**:
    - Klik `Render` dan pantau progresnya di log.
