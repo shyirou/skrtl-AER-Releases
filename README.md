@@ -4,34 +4,34 @@
 
 <h1 align="center">Getting Started</h1>
 
-### Cara Penggunaan
+### How to Use
 
-1. **Siapkan Project di After Effects**:
-   - Buka project *.aep, masukkan komposisi ke `Render Queue`, atur pengaturan, lalu `save project`.
+1. **Prepare Your Project in After Effects**:
+   - Open your *.aep project, add the composition to the `Render Queue`, adjust the settings, and then `save the project`.
 
-2. **Buka Aplikasi**:
-   - Jalankan `AER.exe`, pilih versi After Effects.
+2. **Open the App**:
+   - Run `AER.exe` and select your After Effects version.
 
-3. **Pilih File AEP**:
-   - Klik `Select AEP` dan pilih file proyek *.aep.
+3. **Select the AEP File**:
+   - Click `Select AEP` and choose your *.aep project file.
 
 4. **Render**:
-   - Klik `Render` dan pantau progresnya di log.
+   - Click `Render` and monitor the progress in the log.
 
-5. **Selesai**:
-   - Notifikasi akan muncul jika render berhasil/gagal. File hasil render disimpan sesuai pengaturan di After Effects.
+5. **Done**:
+   - A notification will pop up when rendering is successful or fails. The output file will be saved based on the settings in After Effects.
 
 <h1 align="center">Features</h1>
 
-### Fitur Inti
-- Deteksi otomatis versi After Effects.
-- Pilih file AEP dan mulai render dengan satu klik.
-- Log real-time untuk pantau progres rendering.
-- Antarmuka modern dengan tema dark mode.
+### Core Features
+- Automatic detection of After Effects versions.
+- Select AEP file and start rendering with one click.
+- Real-time log to monitor rendering progress.
+- Modern interface with dark mode theme.
 
-### Lainnya
-- **Multi-Threading**: Proses rendering berjalan di thread terpisah, menjaga antarmuka tetap responsif.
-- **Notifikasi Status**: Tampilkan notifikasi visual saat render selesai (berhasil/gagal).
-- **Kompatibilitas**: Mendukung semua versi After Effects yang memiliki `aerender.exe`.
+### Additional Features
+- **Multi-Threading**: Rendering runs on a separate thread, keeping the interface responsive.
+- **Status Notifications**: Visual notifications when rendering is complete (success/failure).
+- **Compatibility**: Supports all After Effects versions with `aerender.exe`.
 
 <h1 align="center">Windows Only</h1>
