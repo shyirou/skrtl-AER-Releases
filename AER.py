@@ -5,6 +5,8 @@ import customtkinter as ctk
 from tkinter import filedialog
 import threading
 import queue
+import signal
+import psutil
 
 # Function to detect all After Effects versions
 def detect_aerender_versions():
@@ -19,8 +21,18 @@ def detect_aerender_versions():
             aerender_versions.append((version, aerender_path))
     return aerender_versions
 
+# Add this function after detect_aerender_versions()
+def get_system_memory():
+    """Get total system memory in GB"""
+    return round(psutil.virtual_memory().total / (1024.0 ** 3), 1)
+
+# Add these global variables after imports
+render_process = None
+is_paused = False
+
 # Function to run aerender
 def render_aep():
+    global render_process
     aerender_path = aerender_var.get()
     aep_file = aep_path_var.get()
 
@@ -31,29 +43,35 @@ def render_aep():
         status_label.configure(text="Error: Select an AEP file first!", text_color="red")
         return
 
-    # Disable render button
+    # Disable/enable appropriate buttons
     render_button.configure(state="disabled")
+    stop_button.configure(state="normal")
+    pause_button.configure(state="normal")
     output_text.delete(1.0, ctk.END)
-    status_label.configure(text="Rendering...", text_color="yellow")
+    status_label.configure(text="Rendering...", text_color="#ffff00")
 
     def render_thread():
-        cmd = f'"{aerender_path}" -project "{aep_file}"'
-        process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
+        global render_process
+        memory_limit = str(memory_var.get())
+        cmd = f'"{aerender_path}" -project "{aep_file}" -mem_usage {memory_limit} {memory_limit}'
+        
+        render_process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, 
+                                        stderr=subprocess.STDOUT, universal_newlines=True)
         
         while True:
-            output = process.stdout.readline()
-            if output == '' and process.poll() is not None:
+            output = render_process.stdout.readline()
+            if output == '' and render_process.poll() is not None:
                 break
             if output:
                 output_queue.put(output.strip())
                 root.event_generate('<<NewOutput>>')
 
-        return_code = process.poll()
+        return_code = render_process.poll()
         
         if return_code == 0:
-            status_queue.put(("Render successful!", "green"))
+            status_queue.put(("Render successful!", "#00ff00"))
         else:
-            status_queue.put(("Error: Render failed!", "red"))
+            status_queue.put(("Render failed!", "#ff0000"))
         
         root.event_generate('<<RenderComplete>>')
 
@@ -64,9 +82,14 @@ def render_aep():
             output_text.see(ctk.END)
 
     def render_complete(event):
+        global render_process
         status_text, status_color = status_queue.get()
         status_label.configure(text=status_text, text_color=status_color)
         render_button.configure(state="normal")
+        stop_button.configure(state="disabled")
+        pause_button.configure(state="disabled")
+        pause_button.configure(text="Pause")
+        render_process = None
 
     output_queue = queue.Queue()
     status_queue = queue.Queue()
@@ -83,13 +106,61 @@ def select_aep():
         aep_path_var.set(aep_file)
         status_label.configure(text=f"AEP file selected: {aep_file}", text_color="white")
 
+def stop_render():
+    global render_process
+    if render_process:
+        try:
+            parent = psutil.Process(render_process.pid)
+            children = parent.children(recursive=True)
+            
+            for child in children:
+                child.terminate()
+            
+            render_process.terminate()
+            
+            status_label.configure(text="Render stopped!", text_color="#ff0000")
+            render_button.configure(state="normal")
+            stop_button.configure(state="disabled")
+            pause_button.configure(state="disabled")
+            pause_button.configure(text="Pause")
+        except:
+            pass
+
+def toggle_pause():
+    global render_process, is_paused
+    if not render_process:
+        return
+
+    if is_paused:
+        try:
+            parent = psutil.Process(render_process.pid)
+            parent.resume()
+            for child in parent.children(recursive=True):
+                child.resume()
+            pause_button.configure(text="Pause")
+            status_label.configure(text="Rendering...", text_color="#ffff00")
+        except:
+            pass
+    else:
+        try:
+            parent = psutil.Process(render_process.pid)
+            parent.suspend()
+            for child in parent.children(recursive=True):
+                child.suspend()
+            pause_button.configure(text="Resume")
+            status_label.configure(text="Render paused", text_color="#ffa500")
+        except:
+            pass
+    
+    is_paused = not is_paused
+
 # GUI Setup
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("dark-blue")
 
 # Window Setup
 root = ctk.CTk()
-root.title("skrtl-AER | 24 Jan 2025")
+root.title("skrtl-AER | 25 Jan 2025")
 root.geometry("800x600")
 root.configure(bg="#1a1a1a")
 
@@ -104,7 +175,7 @@ header_frame.pack(fill="x", pady=(0, 10))
 title_label = ctk.CTkLabel(header_frame, text="AERender", font=("Ubuntu", 28, "bold"), text_color="#ffffff")
 title_label.pack(pady=8)
 
-version_label = ctk.CTkLabel(header_frame, text="0.1.0", font=("Ubuntu", 12), text_color="#ffffff")
+version_label = ctk.CTkLabel(header_frame, text="0.1.1", font=("Ubuntu", 12), text_color="#ffffff")
 version_label.pack(pady=(0,8))
 
 # Content Section
@@ -149,6 +220,65 @@ version_dropdown = ctk.CTkOptionMenu(
 version_dropdown.set(version_options[0])
 version_dropdown.pack(pady=5)
 
+# Memory Usage Section
+memory_frame = ctk.CTkFrame(content_frame, fg_color="transparent")
+memory_frame.pack(pady=5, padx=20)
+
+total_ram = get_system_memory()
+memory_label = ctk.CTkLabel(memory_frame, 
+                           text=f"Maximum Memory Usage (%) - System RAM: {total_ram}GB", 
+                           font=("Ubuntu", 14, "bold"), 
+                           text_color="#ffffff")
+memory_label.pack(pady=(0, 5))
+
+memory_var = ctk.IntVar(value=75)
+memory_slider = ctk.CTkSlider(memory_frame, from_=25, to=90, number_of_steps=65,
+                             variable=memory_var, width=200)
+memory_slider.pack(pady=5)
+
+# Add after memory slider section
+memory_info_frame = ctk.CTkFrame(memory_frame, fg_color="transparent")
+memory_info_frame.pack(pady=(5, 0))
+
+memory_info_high = ctk.CTkLabel(memory_info_frame, 
+                               text="• High RAM (>75%): Faster render, higher risk of errors",
+                               font=("Ubuntu", 11), 
+                               text_color="#ff4444",
+                               justify="left")
+memory_info_high.pack(anchor="w")
+
+memory_info_medium = ctk.CTkLabel(memory_info_frame, 
+                                 text="• Medium RAM (50-75%): Balanced performance",
+                                 font=("Ubuntu", 11), 
+                                 text_color="#44ff44",
+                                 justify="left")
+memory_info_medium.pack(anchor="w")
+
+memory_info_low = ctk.CTkLabel(memory_info_frame, 
+                              text="• Low RAM (<50%): Slower render, more stable",
+                              font=("Ubuntu", 11), 
+                              text_color="#4444ff",
+                              justify="left")
+memory_info_low.pack(anchor="w")
+
+def update_memory_label(*args):
+    ram_usage = (memory_var.get() / 100.0) * total_ram
+    memory_value_label.configure(text=f"{memory_var.get()}% ({round(ram_usage, 1)}GB)")
+    
+    # Update text colors based on memory usage with more contrast
+    if memory_var.get() > 75:
+        memory_value_label.configure(text_color="#ff4444")  # Merah lebih terang
+    elif memory_var.get() > 50:
+        memory_value_label.configure(text_color="#44ff44")  # Hijau lebih terang
+    else:
+        memory_value_label.configure(text_color="#4444ff")  # Biru lebih terang
+
+memory_var.trace_add("write", update_memory_label)
+memory_value_label = ctk.CTkLabel(memory_frame, text="75%", 
+                                 font=("Ubuntu", 12), text_color="#ffffff")
+memory_value_label.pack()
+update_memory_label()  # Initial update
+
 # File Selection Section
 file_frame = ctk.CTkFrame(content_frame, fg_color="transparent")
 file_frame.pack(pady=10, padx=20)
@@ -159,28 +289,43 @@ button_frame = ctk.CTkFrame(file_frame, fg_color="transparent")
 button_frame.pack()
 
 select_aep_button = ctk.CTkButton(button_frame, text="Select AEP", command=select_aep, font=("Ubuntu", 14, "bold"),
-                                fg_color="#2980b9", text_color="#ffffff", hover_color="#3498db", height=35, width=140,
+                                fg_color="#1a1a1a", text_color="#ffffff", hover_color="#2d2d2d", height=35, width=140,
                                 corner_radius=8)
 select_aep_button.pack(side="left", padx=3)
 
 render_button = ctk.CTkButton(button_frame, text="Render", command=render_aep, font=("Ubuntu", 14, "bold"),
-                            fg_color="#27ae60", text_color="#ffffff", hover_color="#2ecc71", height=35, width=140,
+                            fg_color="#1a1a1a", text_color="#ffffff", hover_color="#2d2d2d", height=35, width=140,
                             corner_radius=8)
 render_button.pack(side="left", padx=3)
 
-# Status Section
-status_frame = ctk.CTkFrame(content_frame, fg_color="transparent")
-status_frame.pack(fill="x", pady=(10, 3), padx=20)
-
-status_label = ctk.CTkLabel(status_frame, text="", font=("Ubuntu", 12), text_color="#ffffff")
-status_label.pack()
+# Add status label below the button frame
+status_label = ctk.CTkLabel(file_frame, text="", font=("Ubuntu", 12), text_color="#ffffff")
+status_label.pack(pady=(5, 0))
 
 # Output Section
 output_frame = ctk.CTkFrame(content_frame, fg_color="#1a1a1a", corner_radius=8)
 output_frame.pack(fill="both", expand=True, pady=10, padx=20)
 
-log_label = ctk.CTkLabel(output_frame, text="Logs:", font=("Ubuntu", 12, "bold"), text_color="#ffffff")
-log_label.pack(anchor="w", padx=8, pady=(8,0))
+# Add a frame for log header and control buttons
+log_header_frame = ctk.CTkFrame(output_frame, fg_color="transparent")
+log_header_frame.pack(fill="x", padx=8, pady=(8,0))
+
+log_label = ctk.CTkLabel(log_header_frame, text="Logs:", font=("Ubuntu", 12, "bold"), text_color="#ffffff")
+log_label.pack(side="left")
+
+# Add control buttons to the right side of log header
+control_frame = ctk.CTkFrame(log_header_frame, fg_color="transparent")
+control_frame.pack(side="right")
+
+stop_button = ctk.CTkButton(control_frame, text="Stop", command=stop_render, font=("Ubuntu", 12, "bold"),
+                         fg_color="#1a1a1a", text_color="#ffffff", hover_color="#2d2d2d", height=25, width=80,
+                         corner_radius=8, state="disabled")
+stop_button.pack(side="left", padx=3)
+
+pause_button = ctk.CTkButton(control_frame, text="Pause", command=toggle_pause, font=("Ubuntu", 12, "bold"),
+                          fg_color="#1a1a1a", text_color="#ffffff", hover_color="#2d2d2d", height=25, width=80,
+                          corner_radius=8, state="disabled")
+pause_button.pack(side="left", padx=3)
 
 output_text = ctk.CTkTextbox(output_frame, font=("Consolas", 11), text_color="#ffffff", fg_color="#1a1a1a",
                             wrap="none", height=150)
