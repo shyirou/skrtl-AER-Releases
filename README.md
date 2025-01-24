@@ -1,5 +1,5 @@
 <p align="center">
-  <img style="display: block;-webkit-user-select: none;margin: auto;background-color: hsl(0, 0%, 90%);transition: background-color 300ms;" src="https://i.imgur.com/7hU3z47.png">
+  <img style="display: block;-webkit-user-select: none;margin: auto;background-color: hsl(0, 0%, 90%);transition: background-color 300ms;" src="https://i.imgur.com/7w1PZTA.png">
 </p>
 
 <h1 align="center">Getting Started</h1>
@@ -33,5 +33,8 @@
 - **Multi-Threading**: Rendering runs on a separate thread, keeping the interface responsive.
 - **Status Notifications**: Visual notifications when rendering is complete (success/failure).
 - **Compatibility**: Supports all After Effects versions with `aerender.exe`.
+- **Memory Management**: Set RAM usage limits for optimized performance.
+- **Process Control**: Pause, resume, or stop rendering processes.
+- **System RAM Info**: Displays total RAM and usage recommendations.
 
 <h1 align="center">Windows Only</h1>
